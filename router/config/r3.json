@@ -1,0 +1,13 @@
+{
+  "router_id": "R3",
+  "ip": "127.0.0.1",
+  "port": 5003,
+  "controller": {
+    "host": "127.0.0.1",
+    "port": 5000
+  },
+  "neighbors": [
+    {"neighbor_id": "R1", "cost": 2},
+    {"neighbor_id": "R4", "cost": 5}
+  ]
+}
