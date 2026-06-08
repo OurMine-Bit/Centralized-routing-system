@@ -26,7 +26,7 @@ Rutas optimas esperadas (para validar en Sprint 2):
 
 ### 1. Iniciar el controlador
 ```bash
-cd centralized-routing
+cd Centralized-Routing
 python -m controller.main
 ```
 
