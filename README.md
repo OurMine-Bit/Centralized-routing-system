@@ -1,6 +1,18 @@
-# Centralized Routing System — Sprint 1
+# Centralized Routing System
 
-## Topologia de red (diamante)
+A software-based centralized routing system built in Python where router applications communicate with a controller via TCP. The controller collects network topology, computes optimal routes using Dijkstra's algorithm, generates routing tables, and distributes them to all routers.
+
+## Team
+- Cristian Alexander Cuastumal
+- Pablo Andres Collazos
+
+**Course:** Informatics for Telecommunications
+**Program:** Telecommunication Engineering
+**Date:** June 2026
+
+---
+
+## Network Topology
 
 ```
         R1
@@ -14,50 +26,159 @@
         R4
 ```
 
-Rutas optimas esperadas (para validar en Sprint 2):
-- R1 -> R2: directo, costo 4
-- R1 -> R3: directo, costo 2
-- R1 -> R4: via R2, costo 7  (R1->R2->R4 = 4+3)  [mejor que R1->R3->R4 = 2+5=7, empate]
-- R2 -> R3: via R1, costo 6  (R2->R1->R3 = 4+2)
-- R2 -> R4: directo, costo 3
-- R3 -> R4: via R2, costo 7  (R3->R1->R2->R4 = 2+4+3)  o directo 5... directo R3->R4=5 gana
+---
 
-## Como ejecutar (Sprint 1)
+## Project Structure
 
-### 1. Iniciar el controlador
-```bash
-cd Centralized-Routing
-python -m controller.main
 ```
-
-### 2. Iniciar cada router (en terminales separadas)
-```bash
-python -m router.main --config router/config/r1.json
-python -m router.main --config router/config/r2.json
-python -m router.main --config router/config/r3.json
-python -m router.main --config router/config/r4.json
-```
-
-## Estructura del proyecto
-```
-centralized-routing/
+Centralized_Routing/
 ├── controller/
-│   ├── main.py       # Punto de entrada del controlador
-│   ├── server.py     # Servidor TCP con threading
-│   ├── topology.py   # Grafo de topologia de red
-│   └── registry.py   # Registro de routers conectados
+│   ├── main.py           # Entry point, CLI, callback
+│   ├── server.py         # TCP server with threading
+│   ├── registry.py       # Router registry
+│   ├── topology.py       # Network graph
+│   ├── dijkstra.py       # Shortest path algorithm
+│   ├── logger.py         # Event logging
+│   └── dao/
+│       ├── db_connection.py  # MySQL connection
+│       ├── router_dao.py     # Router persistence
+│       ├── topology_dao.py   # Topology persistence
+│       └── log_dao.py        # Event persistence
 ├── router/
-│   ├── main.py       # Punto de entrada de cada router
-│   ├── client.py     # Cliente TCP
+│   ├── main.py           # Entry point, CLI
+│   ├── client.py         # TCP client
 │   └── config/
-│       ├── r1.json   # Configuracion de R1
-│       ├── r2.json   # Configuracion de R2
-│       ├── r3.json   # Configuracion de R3
-│       └── r4.json   # Configuracion de R4
-└── shared/
-    └── messages.py   # Definicion de todos los mensajes JSON
+│       ├── r1.json
+│       ├── r2.json
+│       ├── r3.json
+│       └── r4.json
+├── shared/
+│   └── messages.py       # JSON message definitions
+├── test/
+│   ├── test_dijkstra.py
+│   ├── test_topology.py
+│   └── test_registry.py
+└── README.md
 ```
 
-## Requisitos
-- Python 3.8+
-- No requiere librerias externas (solo stdlib)
+---
+
+## Requirements
+
+- Python 3.11+
+- MySQL (via XAMPP or standalone)
+- mysql-connector-python
+
+```
+pip install mysql-connector-python pytest
+```
+
+### MySQL setup
+
+```
+CREATE DATABASE centralized_routing_controller;
+USE centralized_routing_controller;
+
+CREATE TABLE routers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    router_id VARCHAR(10),
+    ip VARCHAR(20),
+    puerto INT,
+    estado VARCHAR(10) DEFAULT 'activo'
+);
+
+CREATE TABLE enlaces (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    source_router VARCHAR(10),
+    destination_router VARCHAR(10),
+    cost INT
+);
+
+CREATE TABLE eventos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(50),
+    descripcion VARCHAR(255),
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## How to Run
+
+Step 1 - Start MySQL (via XAMPP Control Panel)
+
+Step 2 - Start the controller:
+```
+python controller/main.py
+```
+
+Step 3 - Start each router in separate terminals:
+```
+python router/main.py --config router/config/r1.json
+python router/main.py --config router/config/r2.json
+python router/main.py --config router/config/r3.json
+python router/main.py --config router/config/r4.json
+```
+
+---
+
+## Controller CLI Commands
+
+| Command         | Description                                  |
+|-----------------|----------------------------------------------|
+| routers         | List registered routers                      |
+| topology        | Show current network topology                |
+| tables          | Recalculate and redistribute routing tables  |
+| link R1 R3 10   | Change link cost between R1 and R3 to 10     |
+| exit            | Stop the controller                          |
+
+---
+
+## Router CLI Commands
+
+| Command | Description                    |
+|---------|--------------------------------|
+| show    | Display current routing table  |
+| exit    | Disconnect from controller     |
+
+---
+
+## Running Tests
+
+```
+pytest tests/ -v
+```
+
+Expected output: 29 passed
+
+---
+
+## Message Protocol
+
+All messages use JSON format over TCP, delimited by newline.
+
+| Message           | Direction             | Description                        |
+|-------------------|-----------------------|------------------------------------|
+| REGISTER_ROUTER   | Router -> Controller  | Register with ID, IP, port         |
+| TOPOLOGY_UPDATE   | Router -> Controller  | Send neighbor list and costs       |
+| ROUTING_TABLE     | Controller -> Router  | Send computed routing table        |
+| LINK_COST_UPDATE  | Controller            | Update link cost                   |
+| ACK               | Controller -> Router  | Confirm message received           |
+| ERROR             | Controller -> Router  | Report invalid message             |
+
+---
+
+## Database
+
+All events are stored in MySQL database centralized_routing_controller:
+
+- routers  - registered routers with IP, port and status
+- enlaces  - network links with costs
+- eventos  - full event history with timestamps
+
+---
+
+## GitHub
+
+https://github.com/OurMine-Bit/Centralized-routing-system
